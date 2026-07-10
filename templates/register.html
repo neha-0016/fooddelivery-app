@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Registration - Antigravity Eats</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .form-container {
+            max-width: 500px;
+            margin: 3rem auto;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="nav-brand"><span>🚀 Antigravity</span> Eats</a>
+        <div class="nav-links">
+            <a href="/restaurants/" class="nav-link">🏪 Restaurants</a>
+            <a href="/login/" class="nav-btn">Login</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card form-container">
+            <h2 style="text-align: center; margin-bottom: 1.5rem;">Join Antigravity Eats</h2>
+            <div id="alertBox"></div>
+            <form id="registerForm">
+                <div class="form-group">
+                    <label class="form-label" for="fullName">Full Name</label>
+                    <input type="text" id="fullName" class="form-control" placeholder="e.g. NEHA" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="email">Email Address</label>
+                    <input type="email" id="email" class="form-control" placeholder="e.g. rahul@gmail.com" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="phone">Phone Number</label>
+                    <input type="tel" id="phone" class="form-control" placeholder="e.g. 9876543210" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="address">Delivery Address</label>
+                    <textarea id="address" class="form-control" rows="3" placeholder="e.g. KPHB Colony" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="city">City</label>
+                    <input type="text" id="city" class="form-control" placeholder="e.g. Hyderabad" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">Register Now</button>
+            </form>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Antigravity Eats.</p>
+    </footer>
+
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const alertBox = document.getElementById('alertBox');
+            alertBox.innerHTML = '';
+
+            const payload = {
+                full_name: document.getElementById('fullName').value,
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value,
+                address: document.getElementById('address').value,
+                city: document.getElementById('city').value
+            };
+
+            try {
+                const response = await fetch('/api/customers/add/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    const customer = await response.json();
+                    
+                    // Show success
+                    alertBox.innerHTML = `
+                        <div class="alert alert-success">
+                            Registration successful! Logging you in...
+                        </div>
+                    `;
+
+                    // Auto Login - Save to Local Storage
+                    localStorage.setItem('currentUser', JSON.stringify({
+                        id: customer.id,
+                        full_name: customer.full_name,
+                        email: customer.email,
+                        address: customer.address
+                    }));
+
+                    // Automatically create an empty Cart for them
+                    try {
+                        await fetch('/api/carts/', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ customer: customer.id })
+                        });
+                    } catch(err) {
+                        console.error("Cart pre-creation failed", err);
+                    }
+
+                    setTimeout(() => {
+                        window.location.href = '/restaurants/';
+                    }, 1500);
+
+                } else {
+                    const data = await response.json();
+                    alertBox.innerHTML = `
+                        <div class="alert alert-danger">
+                            Error: ${JSON.stringify(data)}
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                alertBox.innerHTML = `
+                    <div class="alert alert-danger">
+                        Connection failed. Check if server is running.
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

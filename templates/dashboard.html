@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Antigravity Eats</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .dashboard-layout {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            gap: 2rem;
+            margin-top: 1rem;
+        }
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .sidebar-item {
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: var(--transition);
+        }
+        .sidebar-item:hover, .sidebar-item.active {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .sidebar-item.active {
+            border-left: 3px solid var(--accent-color);
+            background: rgba(245, 158, 11, 0.1);
+        }
+        .action-btns {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .action-btns button {
+            width: auto;
+            padding: 0.35rem 0.75rem;
+            font-size: 0.85rem;
+        }
+        .card-header-flex {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        .card-header-flex h2 {
+            margin-bottom: 0;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="nav-brand"><span>🚀 Antigravity</span> Dashboard</a>
+        <div class="nav-links">
+            <span style="color: var(--text-secondary)">Role: <strong>Administrator</strong></span>
+            <a href="/" class="nav-link">Main Site</a>
+            <button class="nav-btn" onclick="adminLogout()">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container" style="max-width: 1300px;">
+        <div class="dashboard-layout">
+            <!-- Sidebar Navigation -->
+            <div class="sidebar card">
+                <h3 style="padding: 0.5rem 1rem; font-size: 0.9rem; color: var(--text-secondary); text-transform: uppercase;">Staging Ops</h3>
+                <div class="sidebar-item active" id="tab-orders" onclick="switchSection('orders')">📋 Orders</div>
+                <div class="sidebar-item" id="tab-restaurants" onclick="switchSection('restaurants')">🏪 Restaurants</div>
+                <div class="sidebar-item" id="tab-foods" onclick="switchSection('foods')">🍔 Food Items</div>
+                <div class="sidebar-item" id="tab-customers" onclick="switchSection('customers')">👥 Customers</div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="card" style="padding: 2rem;">
+                <div id="alertBox"></div>
+
+                <!-- ORDERS SECTION -->
+                <div id="section-orders">
+                    <div class="card-header-flex">
+                        <h2>Order Log & Dispatch</h2>
+                        <button class="btn btn-secondary" onclick="fetchOrders()" style="width: auto;">Refresh</button>
+                    </div>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Customer</th>
+                                    <th>Restaurant</th>
+                                    <th>Items</th>
+                                    <th>Total Price</th>
+                                    <th>Delivery Status</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ordersTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- RESTAURANTS SECTION -->
+                <div id="section-restaurants" style="display: none;">
+                    <div class="card-header-flex">
+                        <h2>Restaurants</h2>
+                        <button class="btn btn-primary" onclick="openRestaurantModal()" style="width: auto;">+ Add Restaurant</button>
+                    </div>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Phone</th>
+                                    <th>Address</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="restaurantsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- FOOD ITEMS SECTION -->
+                <div id="section-foods" style="display: none;">
+                    <div class="card-header-flex">
+                        <h2>Menu Items Catalogue</h2>
+                        <button class="btn btn-primary" onclick="openFoodModal()" style="width: auto;">+ Add Food Item</button>
+                    </div>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Category</th>
+                                    <th>Restaurant</th>
+                                    <th>Price</th>
+                                    <th>Availability</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="foodsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- CUSTOMERS SECTION -->
+                <div id="section-customers" style="display: none;">
+                    <div class="card-header-flex">
+                        <h2>Customer Directory</h2>
+                    </div>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Phone</th>
+                                    <th>Address</th>
+                                    <th>City</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="customersTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- RESTAURANT MODAL -->
+    <div id="restaurantModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeRestaurantModal()">&times;</span>
+            <h2 id="restaurantModalTitle">Add Restaurant</h2>
+            <form id="restaurantForm">
+                <input type="hidden" id="editRestaurantId">
+                <div class="form-group">
+                    <label class="form-label" for="restName">Name</label>
+                    <input type="text" id="restName" class="form-control" placeholder="e.g. Spicy Kitchen" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="restDesc">Description</label>
+                    <textarea id="restDesc" class="form-control" placeholder="e.g. Traditional Hyderabadi Delicacies"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="restPhone">Phone</label>
+                    <input type="text" id="restPhone" class="form-control" placeholder="e.g. 987-654-3210" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="restAddress">Address</label>
+                    <textarea id="restAddress" class="form-control" placeholder="e.g. Madhapur, Hyderabad" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="restActive">Status</label>
+                    <select id="restActive" class="form-control">
+                        <option value="true">Open</option>
+                        <option value="false">Closed</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">Save Restaurant</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- FOOD ITEM MODAL -->
+    <div id="foodModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeFoodModal()">&times;</span>
+            <h2 id="foodModalTitle">Add Food Item</h2>
+            <form id="foodForm">
+                <input type="hidden" id="editFoodId">
+                <div class="form-group">
+                    <label class="form-label" for="foodRestName">Restaurant Name</label>
+                    <input type="text" id="foodRestName" class="form-control" placeholder="e.g. Spicy Kitchen" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="foodName">Food Name</label>
+                    <input type="text" id="foodName" class="form-control" placeholder="e.g. Chicken Biryani" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="foodCategory">Category</label>
+                    <input type="text" id="foodCategory" class="form-control" placeholder="e.g. Main Course" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="foodPrice">Price (₹)</label>
+                    <input type="number" id="foodPrice" class="form-control" placeholder="e.g. 299" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="foodAvailability">Availability</label>
+                    <select id="foodAvailability" class="form-control">
+                        <option value="Available">Available</option>
+                        <option value="Unavailable">Unavailable</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">Save Food Item</button>
+            </form>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Antigravity Dashboard.</p>
+    </footer>
+
+    <script>
+        let currentSection = 'orders';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Verify Admin Login
+            const user = JSON.parse(localStorage.getItem('currentUser'));
+            if (!user || user.role !== 'admin') {
+                window.location.href = '/login/';
+                return;
+            }
+
+            switchSection('orders');
+        });
+
+        function switchSection(section) {
+            currentSection = section;
+
+            // Update sidebar highlighting
+            document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+            document.getElementById(`tab-${section}`).classList.add('active');
+
+            // Hide/Show sections
+            document.getElementById('section-orders').style.display = section === 'orders' ? 'block' : 'none';
+            document.getElementById('section-restaurants').style.display = section === 'restaurants' ? 'block' : 'none';
+            document.getElementById('section-foods').style.display = section === 'foods' ? 'block' : 'none';
+            document.getElementById('section-customers').style.display = section === 'customers' ? 'block' : 'none';
+
+            // Load data
+            if (section === 'orders') fetchOrders();
+            if (section === 'restaurants') fetchRestaurants();
+            if (section === 'foods') fetchFoods();
+            if (section === 'customers') fetchCustomers();
+        }
+
+        /* --- API INTERACTIVE OPERATIONS --- */
+
+        function showAlert(msg, isSuccess = true) {
+            const box = document.getElementById('alertBox');
+            box.innerHTML = `<div class="alert alert-${isSuccess ? 'success' : 'danger'}">${msg}</div>`;
+            setTimeout(() => box.innerHTML = '', 3000);
+        }
+
+        // 1. ORDERS LOGIC
+        async function fetchOrders() {
+            const table = document.getElementById('ordersTableBody');
+            table.innerHTML = '<tr><td colspan="8" style="text-align: center;">Loading...</td></tr>';
+            try {
+                const response = await fetch('/api/orders/');
+                if (response.ok) {
+                    const data = await response.json();
+                    data.sort((a,b) => b.id - a.id);
+                    table.innerHTML = data.map(o => {
+                        const items = (o.items || []).map(i => `${i.quantity} x ${i.food_detail ? i.food_detail.name : 'Unknown Food'}`).join(', ') || 'No Items';
+                        return `
+                            <tr>
+                                <td>#${o.id}</td>
+                                <td>${o.customer_name || 'N/A'}</td>
+                                <td>${o.restaurant_name || 'N/A'}</td>
+                                <td style="font-size: 0.85rem; max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${items}">${items}</td>
+                                <td>₹${parseFloat(o.total_price).toFixed(2)}</td>
+                                <td>
+                                    <select class="status-select" onchange="updateOrderStatus(${o.id}, this.value)">
+                                        <option value="Pending" ${o.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                                        <option value="Preparing" ${o.status === 'Preparing' ? 'selected' : ''}>Preparing</option>
+                                        <option value="Out for Delivery" ${o.status === 'Out for Delivery' ? 'selected' : ''}>Out for Delivery</option>
+                                        <option value="Delivered" ${o.status === 'Delivered' ? 'selected' : ''}>Delivered</option>
+                                        <option value="Cancelled" ${o.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+                                    </select>
+                                </td>
+                                <td>${new Date(o.created_at).toLocaleDateString()}</td>
+                                <td class="action-btns">
+                                    <button class="btn btn-danger" onclick="deleteOrder(${o.id})">Delete</button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+            } catch(e) {
+                table.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--danger-color);">Offline</td></tr>';
+            }
+        }
+
+        async function updateOrderStatus(orderId, newStatus) {
+            try {
+                const response = await fetch(`/api/orders/update/${orderId}/`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                if (response.ok) {
+                    showAlert(`Order #${orderId} status updated to ${newStatus}`);
+                    fetchOrders();
+                } else {
+                    showAlert('Failed to update status', false);
+                }
+            } catch(err) {
+                showAlert('Connection failed', false);
+            }
+        }
+
+        async function deleteOrder(orderId) {
+            if (!confirm(`Delete Order #${orderId}?`)) return;
+            try {
+                const response = await fetch(`/api/orders/delete/${orderId}/`, { method: 'DELETE' });
+                if (response.ok) {
+                    showAlert(`Order #${orderId} deleted successfully`);
+                    fetchOrders();
+                }
+            } catch(err) {
+                showAlert('Connection failed', false);
+            }
+        }
+
+        // 2. RESTAURANTS LOGIC
+        async function fetchRestaurants() {
+            const table = document.getElementById('restaurantsTableBody');
+            table.innerHTML = '<tr><td colspan="6" style="text-align: center;">Loading...</td></tr>';
+            try {
+                const response = await fetch('/api/restaurants/');
+                if (response.ok) {
+                    const data = await response.json();
+                    table.innerHTML = data.map(r => `
+                        <tr>
+                            <td>#${r.id}</td>
+                            <td style="font-weight: 600;">${r.name}</td>
+                            <td>${r.phone || 'N/A'}</td>
+                            <td style="font-size: 0.9rem;">${r.address}</td>
+                            <td><span class="item-badge ${r.is_active ? 'success' : 'danger'}">${r.is_active ? 'Active' : 'Inactive'}</span></td>
+                            <td class="action-btns">
+                                <button class="btn btn-secondary" onclick="editRestaurant(${JSON.stringify(r).replace(/'/g, "&apos;")})">Edit</button>
+                                <button class="btn btn-danger" onclick="deleteRestaurant(${r.id})">Delete</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } catch(e) {
+                table.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--danger-color);">Offline</td></tr>';
+            }
+        }
+
+        function openRestaurantModal(editMode = false) {
+            document.getElementById('restaurantModal').style.display = 'flex';
+            if (!editMode) {
+                document.getElementById('restaurantModalTitle').textContent = 'Add Restaurant';
+                document.getElementById('editRestaurantId').value = '';
+                document.getElementById('restaurantForm').reset();
+            }
+        }
+
+        function closeRestaurantModal() {
+            document.getElementById('restaurantModal').style.display = 'none';
+        }
+
+        function editRestaurant(r) {
+            openRestaurantModal(true);
+            document.getElementById('restaurantModalTitle').textContent = 'Edit Restaurant';
+            document.getElementById('editRestaurantId').value = r.id;
+            document.getElementById('restName').value = r.name;
+            document.getElementById('restDesc').value = r.description || '';
+            document.getElementById('restPhone').value = r.phone || '';
+            document.getElementById('restAddress').value = r.address;
+            document.getElementById('restActive').value = r.is_active ? 'true' : 'false';
+        }
+
+        document.getElementById('restaurantForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const editId = document.getElementById('editRestaurantId').value;
+            const payload = {
+                name: document.getElementById('restName').value,
+                description: document.getElementById('restDesc').value,
+                phone: document.getElementById('restPhone').value,
+                address: document.getElementById('restAddress').value,
+                is_active: document.getElementById('restActive').value === 'true'
+            };
+
+            const url = editId ? `/api/restaurants/${editId}/` : `/api/restaurants/add/`;
+            const method = editId ? 'PUT' : 'POST';
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (response.ok) {
+                    showAlert(editId ? 'Restaurant updated' : 'Restaurant added');
+                    closeRestaurantModal();
+                    fetchRestaurants();
+                } else {
+                    showAlert('Failed to save restaurant details', false);
+                }
+            } catch(e) {
+                showAlert('Connection error', false);
+            }
+        });
+
+        async function deleteRestaurant(id) {
+            if (!confirm('Are you sure you want to delete this restaurant? All menu items associated will be deleted.')) return;
+            try {
+                const response = await fetch(`/api/restaurants/${id}/`, { method: 'DELETE' });
+                if (response.ok) {
+                    showAlert('Restaurant deleted');
+                    fetchRestaurants();
+                }
+            } catch(e) {
+                showAlert('Connection failed', false);
+            }
+        }
+
+        // 3. FOOD CATALOGUE LOGIC
+        async function fetchFoods() {
+            const table = document.getElementById('foodsTableBody');
+            table.innerHTML = '<tr><td colspan="7" style="text-align: center;">Loading catalogue...</td></tr>';
+            try {
+                const response = await fetch('/api/foods/');
+                if (response.ok) {
+                    const data = await response.json();
+                    table.innerHTML = data.map(f => `
+                        <tr>
+                            <td>#${f.id}</td>
+                            <td style="font-weight: 600;">${f.name}</td>
+                            <td><span class="item-badge info">${f.category || 'Main Course'}</span></td>
+                            <td>${f.restaurant_name || 'N/A'}</td>
+                            <td>₹${parseFloat(f.price).toFixed(2)}</td>
+                            <td><span class="item-badge ${f.is_available ? 'success' : 'danger'}">${f.is_available ? 'Available' : 'Unavailable'}</span></td>
+                            <td class="action-btns">
+                                <button class="btn btn-secondary" onclick="editFood(${JSON.stringify(f).replace(/'/g, "&apos;")})">Edit</button>
+                                <button class="btn btn-danger" onclick="deleteFood(${f.id})">Delete</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } catch(e) {
+                table.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--danger-color);">Offline</td></tr>';
+            }
+        }
+
+        function openFoodModal(editMode = false) {
+            document.getElementById('foodModal').style.display = 'flex';
+            if (!editMode) {
+                document.getElementById('foodModalTitle').textContent = 'Add Menu Item';
+                document.getElementById('editFoodId').value = '';
+                document.getElementById('foodForm').reset();
+            }
+        }
+
+        function closeFoodModal() {
+            document.getElementById('foodModal').style.display = 'none';
+        }
+
+        function editFood(f) {
+            openFoodModal(true);
+            document.getElementById('foodModalTitle').textContent = 'Edit Menu Item';
+            document.getElementById('editFoodId').value = f.id;
+            document.getElementById('foodRestName').value = f.restaurant_name;
+            document.getElementById('foodName').value = f.name;
+            document.getElementById('foodCategory').value = f.category || 'Main Course';
+            document.getElementById('foodPrice').value = f.price;
+            document.getElementById('foodAvailability').value = f.is_available ? 'Available' : 'Unavailable';
+        }
+
+        document.getElementById('foodForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const editId = document.getElementById('editFoodId').value;
+            const payload = {
+                restaurant_name: document.getElementById('foodRestName').value,
+                food_name: document.getElementById('foodName').value,
+                category: document.getElementById('foodCategory').value,
+                price: parseFloat(document.getElementById('foodPrice').value),
+                availability: document.getElementById('foodAvailability').value
+            };
+
+            const url = editId ? `/api/foods/update/${editId}/` : `/api/foods/add/`;
+            const method = editId ? 'PUT' : 'POST';
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (response.ok) {
+                    showAlert(editId ? 'Food catalogue item updated' : 'Food item added to catalogue');
+                    closeFoodModal();
+                    fetchFoods();
+                } else {
+                    showAlert('Failed to save food details', false);
+                }
+            } catch(e) {
+                showAlert('Connection error', false);
+            }
+        });
+
+        async function deleteFood(id) {
+            if (!confirm('Delete this food item from the menu?')) return;
+            try {
+                const response = await fetch(`/api/foods/delete/${id}/`, { method: 'DELETE' });
+                if (response.ok) {
+                    showAlert('Food item deleted');
+                    fetchFoods();
+                }
+            } catch(e) {
+                showAlert('Connection failed', false);
+            }
+        }
+
+        // 4. CUSTOMERS LOGIC
+        async function fetchCustomers() {
+            const table = document.getElementById('customersTableBody');
+            table.innerHTML = '<tr><td colspan="7" style="text-align: center;">Loading customer profiles...</td></tr>';
+            try {
+                const response = await fetch('/api/customers/');
+                if (response.ok) {
+                    const data = await response.json();
+                    table.innerHTML = data.map(c => `
+                        <tr>
+                            <td>#${c.id}</td>
+                            <td style="font-weight: 600;">${c.full_name || 'N/A'}</td>
+                            <td>${c.email}</td>
+                            <td>${c.phone || 'N/A'}</td>
+                            <td>${c.address || 'N/A'}</td>
+                            <td>${c.city || 'N/A'}</td>
+                            <td class="action-btns">
+                                <button class="btn btn-danger" onclick="deleteCustomer(${c.id})">Delete</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } catch(e) {
+                table.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--danger-color);">Offline</td></tr>';
+            }
+        }
+
+        async function deleteCustomer(id) {
+            if (!confirm('Are you sure you want to delete this customer? This will delete all associated order and cart logs.')) return;
+            try {
+                const response = await fetch(`/api/customers/${id}/`, { method: 'DELETE' });
+                if (response.ok) {
+                    showAlert('Customer deleted');
+                    fetchCustomers();
+                }
+            } catch(e) {
+                showAlert('Connection failed', false);
+            }
+        }
+
+        function adminLogout() {
+            localStorage.removeItem('currentUser');
+            window.location.href = '/login/';
+        }
+    </script>
+</body>
+</html>

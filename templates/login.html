@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Antigravity Eats</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .form-container {
+            max-width: 450px;
+            margin: 3rem auto;
+        }
+        .login-options {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .customer-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .customer-item:hover {
+            border-color: var(--accent-color);
+            background: rgba(255, 255, 255, 0.05);
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="nav-brand"><span>🚀 Antigravity</span> Eats</a>
+        <div class="nav-links">
+            <a href="/register/" class="nav-link">Register</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card form-container">
+            <div class="tabs">
+                <div class="tab active" id="customerTab" onclick="switchTab('customer')">Customer Portal</div>
+                <div class="tab" id="adminTab" onclick="switchTab('admin')">Admin Portal</div>
+            </div>
+
+            <div id="alertBox"></div>
+
+            <!-- Customer Login Screen -->
+            <div id="customerLoginSection">
+                <h3 style="margin-bottom: 1rem;">Log In as Customer</h3>
+                <div class="form-group">
+                    <label class="form-label" for="loginEmail">Email Address</label>
+                    <input type="email" id="loginEmail" class="form-control" placeholder="e.g. rahul@gmail.com">
+                    <button class="btn btn-primary" onclick="loginByEmail()" style="margin-top: 0.75rem;">Login with Email</button>
+                </div>
+
+                <div style="margin: 1.5rem 0; text-align: center; color: var(--text-secondary);">
+                    <span>- OR select an existing account -</span>
+                </div>
+
+                <h4 style="margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--text-secondary);">Registered Profiles:</h4>
+                <div id="customerList" class="login-options">
+                    <div style="text-align: center; padding: 1rem; color: var(--text-secondary);">Loading customers...</div>
+                </div>
+            </div>
+
+            <!-- Admin Login Screen -->
+            <div id="adminLoginSection" style="display: none; text-align: center;">
+                <h3 style="margin-bottom: 1rem;">Access Administrator Dashboard</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 2rem;">No credentials required for local staging environment.</p>
+                <button class="btn btn-primary" onclick="loginAsAdmin()">Enter Admin Dashboard</button>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Antigravity Eats.</p>
+    </footer>
+
+    <script>
+        let customers = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchCustomers();
+        });
+
+        async function fetchCustomers() {
+            try {
+                const response = await fetch('/api/customers/');
+                if (response.ok) {
+                    customers = await response.json();
+                    renderCustomers();
+                } else {
+                    document.getElementById('customerList').innerHTML = '<div style="color: var(--danger-color)">Failed to load customer profiles</div>';
+                }
+            } catch (err) {
+                document.getElementById('customerList').innerHTML = '<div style="color: var(--danger-color)">Staging API is offline</div>';
+            }
+        }
+
+        function renderCustomers() {
+            const list = document.getElementById('customerList');
+            if (customers.length === 0) {
+                list.innerHTML = '<div style="text-align: center; color: var(--text-secondary)">No registered profiles. Please register a new customer first!</div>';
+                return;
+            }
+
+            list.innerHTML = customers.map(c => `
+                <div class="customer-item" onclick='selectCustomer(${JSON.stringify(c).replace(/'/g, "&apos;")})'>
+                    <div>
+                        <div style="font-weight: 600;">${c.full_name || 'No Name'}</div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary);">${c.email}</div>
+                    </div>
+                    <span style="font-size: 0.85rem; color: var(--accent-color); font-weight: 500;">Select &rarr;</span>
+                </div>
+            `).join('');
+        }
+
+        function selectCustomer(customer) {
+            localStorage.setItem('currentUser', JSON.stringify({
+                id: customer.id,
+                full_name: customer.full_name,
+                email: customer.email,
+                address: customer.address
+            }));
+
+            // Pre-create cart just in case
+            fetch('/api/carts/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ customer: customer.id })
+            }).finally(() => {
+                showSuccessAndRedirect(`/restaurants/`, `Logged in as ${customer.full_name}`);
+            });
+        }
+
+        function loginByEmail() {
+            const email = document.getElementById('loginEmail').value.trim();
+            const alertBox = document.getElementById('alertBox');
+            if (!email) {
+                alertBox.innerHTML = '<div class="alert alert-danger">Please enter a valid email</div>';
+                return;
+            }
+
+            const match = customers.find(c => c.email.toLowerCase() === email.toLowerCase());
+            if (match) {
+                selectCustomer(match);
+            } else {
+                alertBox.innerHTML = '<div class="alert alert-danger">No customer profile found with that email. Please register first.</div>';
+            }
+        }
+
+        function loginAsAdmin() {
+            localStorage.setItem('currentUser', JSON.stringify({
+                role: 'admin',
+                full_name: 'Administrator'
+            }));
+            showSuccessAndRedirect(`/dashboard/`, 'Authorized as Administrator');
+        }
+
+        function switchTab(role) {
+            const customerTab = document.getElementById('customerTab');
+            const adminTab = document.getElementById('adminTab');
+            const customerSection = document.getElementById('customerLoginSection');
+            const adminSection = document.getElementById('adminLoginSection');
+
+            if (role === 'customer') {
+                customerTab.classList.add('active');
+                adminTab.classList.remove('active');
+                customerSection.style.display = 'block';
+                adminSection.style.display = 'none';
+            } else {
+                adminTab.classList.add('active');
+                customerTab.classList.remove('active');
+                adminSection.style.display = 'block';
+                customerSection.style.display = 'none';
+            }
+        }
+
+        function showSuccessAndRedirect(url, msg) {
+            const alertBox = document.getElementById('alertBox');
+            alertBox.innerHTML = `
+                <div class="alert alert-success">
+                    ${msg}. Redirecting...
+                </div>
+            `;
+            setTimeout(() => {
+                window.location.href = url;
+            }, 1000);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Orders - Antigravity Eats</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .order-card {
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.01);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.75rem;
+            margin-bottom: 1rem;
+        }
+        .order-items-list {
+            margin: 1rem 0;
+            padding-left: 1.25rem;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="nav-brand"><span>🚀 Antigravity</span> Eats</a>
+        <div class="nav-links" id="navLinks">
+            <!-- Dynamic navbar -->
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <h1>My Order History</h1>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">Track the status of your active and past orders.</p>
+
+            <div id="ordersContainer">
+                <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">Loading order history...</div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Antigravity Eats.</p>
+    </footer>
+
+    <script>
+        let currentUser = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            setupNavbar();
+
+            if (!currentUser) {
+                document.getElementById('ordersContainer').innerHTML = `
+                    <div style="text-align: center; padding: 2rem;">
+                        <p style="color: var(--text-secondary); margin-bottom: 1rem;">Please log in to view your orders.</p>
+                        <a href="/login/" class="btn btn-primary" style="width: auto;">Log In &rarr;</a>
+                    </div>
+                `;
+                return;
+            }
+
+            fetchOrders();
+        });
+
+        function setupNavbar() {
+            const links = document.getElementById('navLinks');
+            if (currentUser) {
+                links.innerHTML = `
+                    <span style="color: var(--text-secondary); margin-right: 0.5rem;">Hello, <strong>${currentUser.full_name}</strong></span>
+                    <a href="/restaurants/" class="nav-link">🏪 Restaurants</a>
+                    <a href="/cart/" class="nav-link">🛒 Cart</a>
+                    <a href="/orders/" class="nav-link active">📦 My Orders</a>
+                    <button class="nav-btn" onclick="logout()">Logout</button>
+                `;
+            } else {
+                links.innerHTML = `
+                    <a href="/restaurants/" class="nav-link">🏪 Restaurants</a>
+                    <a href="/register/" class="nav-link">Register</a>
+                    <a href="/login/" class="nav-btn">Login</a>
+                `;
+            }
+        }
+
+        async function fetchOrders() {
+            const container = document.getElementById('ordersContainer');
+            try {
+                const response = await fetch('/api/orders/');
+                if (response.ok) {
+                    const data = await response.json();
+                    // Filter orders belonging to the current customer
+                    const customerOrders = data.filter(order => order.customer === currentUser.id);
+                    renderOrders(customerOrders);
+                } else {
+                    container.innerHTML = '<div style="text-align: center; color: var(--danger-color);">Failed to retrieve orders.</div>';
+                }
+            } catch (err) {
+                container.innerHTML = '<div style="text-align: center; color: var(--danger-color);">Server connection offline.</div>';
+            }
+        }
+
+        function renderOrders(list) {
+            const container = document.getElementById('ordersContainer');
+            if (list.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-secondary);">You have not placed any orders yet.</div>';
+                return;
+            }
+
+            // Sort orders by ID descending (newest first)
+            list.sort((a, b) => b.id - a.id);
+
+            container.innerHTML = list.map(o => {
+                const date = new Date(o.created_at).toLocaleString();
+                const statusClass = getStatusClass(o.status);
+                
+                const itemsHtml = (o.items || []).map(item => `
+                    <li>${item.quantity} x ${item.food_detail.name} (₹${parseFloat(item.price).toFixed(2)})</li>
+                `).join('');
+
+                return `
+                    <div class="order-card">
+                        <div class="order-header">
+                            <div>
+                                <span style="font-weight: 700; font-size: 1.15rem;">Order #${o.id}</span>
+                                <span style="font-size: 0.85rem; color: var(--text-secondary); margin-left: 1rem;">${date}</span>
+                            </div>
+                            <span class="item-badge ${statusClass}">${o.status}</span>
+                        </div>
+                        <div>
+                            <div style="font-weight: 600; color: var(--accent-color); margin-bottom: 0.25rem;">${o.restaurant_name}</div>
+                            <div style="font-size: 0.9rem; color: var(--text-secondary);">Delivery Address: ${o.delivery_address}</div>
+                            
+                            <ul class="order-items-list">
+                                ${itemsHtml}
+                            </ul>
+
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+                                <span style="color: var(--text-secondary);">Total Price:</span>
+                                <span style="font-weight: 700; font-size: 1.2rem; color: var(--accent-color);">₹${parseFloat(o.total_price).toFixed(2)}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getStatusClass(status) {
+            switch(status) {
+                case 'Pending': return 'info';
+                case 'Preparing': return '';
+                case 'Out for Delivery': return 'info';
+                case 'Delivered': return 'success';
+                case 'Cancelled': return 'danger';
+                default: return '';
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('currentUser');
+            window.location.href = '/login/';
+        }
+    </script>
+</body>
+</html>

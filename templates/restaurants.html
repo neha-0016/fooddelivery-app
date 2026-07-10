@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browse Restaurants - Antigravity Eats</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .restaurant-meta {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="nav-brand"><span>🚀 Antigravity</span> Eats</a>
+        <div class="nav-links" id="navLinks">
+            <!-- Loaded dynamically -->
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card" style="padding: 1.5rem;">
+            <h1>Browse Premium Restaurants</h1>
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Find the best food spots in your city and order instantly.</p>
+            <div class="search-wrapper">
+                <input type="text" id="searchQuery" class="form-control" placeholder="Search by restaurant name (e.g. Spicy Kitchen)...">
+                <button class="btn btn-primary" onclick="searchRestaurants()">Search</button>
+            </div>
+        </div>
+
+        <div id="restaurantsGrid" class="grid">
+            <!-- Loaded dynamically -->
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Antigravity Eats.</p>
+    </footer>
+
+    <script>
+        let currentUser = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            setupNavbar();
+            fetchRestaurants();
+
+            // Handle enter key in search query
+            document.getElementById('searchQuery').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    searchRestaurants();
+                }
+            });
+        });
+
+        function setupNavbar() {
+            const links = document.getElementById('navLinks');
+            if (currentUser) {
+                links.innerHTML = `
+                    <span style="color: var(--text-secondary); margin-right: 0.5rem;">Hello, <strong>${currentUser.full_name}</strong></span>
+                    <a href="/restaurants/" class="nav-link active">🏪 Restaurants</a>
+                    <a href="/cart/" class="nav-link">🛒 Cart</a>
+                    <a href="/orders/" class="nav-link">📦 My Orders</a>
+                    <button class="nav-btn" onclick="logout()">Logout</button>
+                `;
+            } else {
+                links.innerHTML = `
+                    <a href="/restaurants/" class="nav-link active">🏪 Restaurants</a>
+                    <a href="/register/" class="nav-link">Register</a>
+                    <a href="/login/" class="nav-btn">Login</a>
+                `;
+            }
+        }
+
+        async function fetchRestaurants() {
+            const grid = document.getElementById('restaurantsGrid');
+            grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-secondary);">Loading restaurants...</div>';
+
+            try {
+                const response = await fetch('/api/restaurants/');
+                if (response.ok) {
+                    const data = await response.json();
+                    renderRestaurants(data);
+                } else {
+                    grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--danger-color)">Failed to fetch restaurants.</div>';
+                }
+            } catch (err) {
+                grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--danger-color)">Server is offline.</div>';
+            }
+        }
+
+        async function searchRestaurants() {
+            const query = document.getElementById('searchQuery').value.trim();
+            if (!query) {
+                fetchRestaurants();
+                return;
+            }
+
+            const grid = document.getElementById('restaurantsGrid');
+            grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-secondary);">Searching...</div>';
+
+            try {
+                const response = await fetch(`/api/restaurants/search/?q=${encodeURIComponent(query)}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    renderRestaurants(data);
+                } else {
+                    grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--danger-color)">Failed to perform search.</div>';
+                }
+            } catch (err) {
+                grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--danger-color)">Search connection offline.</div>';
+            }
+        }
+
+        function renderRestaurants(list) {
+            const grid = document.getElementById('restaurantsGrid');
+            if (list.length === 0) {
+                grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-secondary);">No restaurants found. Try search query "spicy"!</div>';
+                return;
+            }
+
+            grid.innerHTML = list.map(r => `
+                <div class="item-card">
+                    <div>
+                        <img src="${r.image_url || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=500'}" alt="${r.name}" style="width: 100%; height: 160px; object-fit: cover; border-radius: 8px; margin-bottom: 1rem; border: 1px solid var(--border-color);">
+                        <div class="item-header">
+                            <h3>${r.name}</h3>
+                            <span class="item-badge ${r.is_active ? 'success' : 'danger'}">${r.is_active ? 'Open' : 'Closed'}</span>
+                        </div>
+                        <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 1rem;">${r.description || 'Premium local dining option.'}</p>
+                        
+                        <div class="restaurant-meta">
+                            <span>📍</span> <span>${r.address}</span>
+                        </div>
+                        <div class="restaurant-meta" style="margin-bottom: 1.5rem;">
+                            <span>📞</span> <span>${r.phone || 'N/A'}</span>
+                        </div>
+                    </div>
+                    <a href="/menu/?restaurant_id=${r.id}" class="btn btn-primary">View Menu</a>
+                </div>
+            `).join('');
+        }
+
+        function logout() {
+            localStorage.removeItem('currentUser');
+            window.location.href = '/login/';
+        }
+    </script>
+</body>
+</html>

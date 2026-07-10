@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Antigravity Eats - Premium Food Delivery</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .hero {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            min-height: 70vh;
+            gap: 1.5rem;
+        }
+        .hero h1 {
+            font-size: 3.5rem;
+            line-height: 1.2;
+        }
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+        }
+        .hero-btns {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .hero-btns a {
+            padding: 0.8rem 2rem;
+            font-size: 1.1rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="nav-brand"><span>🚀 Antigravity</span> Eats</a>
+        <div class="nav-links" id="navLinks">
+            <!-- Dynamic Nav Links -->
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="hero card">
+            <h1>Savor the Finest Flavors Delivered in <span>Antigravity</span></h1>
+            <p>Order delicious dishes from your favorite local restaurants or manage operations dynamically from our premium full-stack dashboard.</p>
+            <div class="hero-btns">
+                <a href="/restaurants/" class="btn btn-primary" style="width: auto;">Browse Restaurants</a>
+                <a href="/login/" class="btn btn-secondary" style="width: auto;" id="heroLoginBtn">Customer Login</a>
+                <a href="/dashboard/" class="btn btn-secondary" style="width: auto; border: 1px solid var(--accent-color); color: var(--accent-color);">Admin Dashboard</a>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Antigravity Eats. Engineered with Django & Vanilla CSS.</p>
+    </footer>
+
+    <script>
+        // Check Login State
+        document.addEventListener('DOMContentLoaded', () => {
+            const user = JSON.parse(localStorage.getItem('currentUser'));
+            const navLinks = document.getElementById('navLinks');
+            const heroLoginBtn = document.getElementById('heroLoginBtn');
+
+            if (user) {
+                // User logged in
+                navLinks.innerHTML = `
+                    <span style="color: var(--text-secondary); margin-right: 0.5rem;">Hello, <strong>${user.full_name}</strong></span>
+                    <a href="/restaurants/" class="nav-link">🏪 Restaurants</a>
+                    <a href="/cart/" class="nav-link">🛒 Cart</a>
+                    <a href="/orders/" class="nav-link">📦 My Orders</a>
+                    <button class="nav-btn" onclick="logout()">Logout</button>
+                `;
+                if (heroLoginBtn) {
+                    heroLoginBtn.textContent = 'View My Orders';
+                    heroLoginBtn.href = '/orders/';
+                }
+            } else {
+                // User logged out
+                navLinks.innerHTML = `
+                    <a href="/restaurants/" class="nav-link">🏪 Restaurants</a>
+                    <a href="/register/" class="nav-link">Register</a>
+                    <a href="/login/" class="nav-btn">Login</a>
+                `;
+            }
+        });
+
+        function logout() {
+            localStorage.removeItem('currentUser');
+            window.location.reload();
+        }
+    </script>
+</body>
+</html>

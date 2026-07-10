@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Cart - Antigravity Eats</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .cart-summary {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="nav-brand"><span>🚀 Antigravity</span> Eats</a>
+        <div class="nav-links" id="navLinks">
+            <!-- Dynamic navbar -->
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <h1>Shopping Cart</h1>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">Manage your items and proceed to checkout.</p>
+
+            <div id="alertBox"></div>
+
+            <!-- Cart Table/List -->
+            <div id="cartContent">
+                <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">Loading your cart...</div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Antigravity Eats.</p>
+    </footer>
+
+    <script>
+        let currentUser = null;
+        let cartId = null;
+        let cartData = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            setupNavbar();
+
+            if (!currentUser) {
+                document.getElementById('cartContent').innerHTML = `
+                    <div style="text-align: center; padding: 2rem;">
+                        <p style="color: var(--text-secondary); margin-bottom: 1rem;">Please log in to view your cart.</p>
+                        <a href="/login/" class="btn btn-primary" style="width: auto;">Log In &rarr;</a>
+                    </div>
+                `;
+                return;
+            }
+
+            await fetchCart();
+        });
+
+        function setupNavbar() {
+            const links = document.getElementById('navLinks');
+            if (currentUser) {
+                links.innerHTML = `
+                    <span style="color: var(--text-secondary); margin-right: 0.5rem;">Hello, <strong>${currentUser.full_name}</strong></span>
+                    <a href="/restaurants/" class="nav-link">🏪 Restaurants</a>
+                    <a href="/cart/" class="nav-link active">🛒 Cart</a>
+                    <a href="/orders/" class="nav-link">📦 My Orders</a>
+                    <button class="nav-btn" onclick="logout()">Logout</button>
+                `;
+            } else {
+                links.innerHTML = `
+                    <a href="/restaurants/" class="nav-link">🏪 Restaurants</a>
+                    <a href="/register/" class="nav-link">Register</a>
+                    <a href="/login/" class="nav-btn">Login</a>
+                `;
+            }
+        }
+
+        async function fetchCart() {
+            const content = document.getElementById('cartContent');
+            try {
+                const response = await fetch('/api/carts/');
+                if (response.ok) {
+                    const carts = await response.json();
+                    const match = carts.find(c => c.customer === currentUser.id);
+                    if (match) {
+                        cartId = match.id;
+                        cartData = match;
+                        renderCart();
+                    } else {
+                        content.innerHTML = '<div style="text-align: center; color: var(--text-secondary);">Your cart is empty.</div>';
+                    }
+                } else {
+                    content.innerHTML = '<div style="text-align: center; color: var(--danger-color);">Error fetching cart.</div>';
+                }
+            } catch (err) {
+                content.innerHTML = '<div style="text-align: center; color: var(--danger-color);">Server offline.</div>';
+            }
+        }
+
+        function renderCart() {
+            const content = document.getElementById('cartContent');
+            const items = cartData.items || [];
+
+            if (items.length === 0) {
+                content.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-secondary);">Your cart is empty. Browse restaurants and add some food!</div>';
+                return;
+            }
+
+            let subtotal = 0;
+            let html = '<div class="cart-list">';
+            items.forEach(item => {
+                const price = parseFloat(item.food_detail.price);
+                const total = price * item.quantity;
+                subtotal += total;
+
+                html += `
+                    <div class="cart-row">
+                        <div>
+                            <h3 style="margin-bottom: 0.25rem;">${item.food_detail.name}</h3>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary);">${item.food_detail.restaurant_name} | ₹${price.toFixed(2)}</div>
+                        </div>
+                        <div class="qty-control">
+                            <button class="qty-btn" onclick="updateQuantity(${item.id}, ${item.quantity - 1})">-</button>
+                            <span style="font-weight: 600; font-size: 1.1rem; min-width: 20px; text-align: center;">${item.quantity}</span>
+                            <button class="qty-btn" onclick="updateQuantity(${item.id}, ${item.quantity + 1})">+</button>
+                            
+                            <div style="font-weight: 700; min-width: 80px; text-align: right; margin-left: 1.5rem; color: var(--accent-color)">
+                                ₹${total.toFixed(2)}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+
+            html += `
+                <div class="cart-summary">
+                    <span>Total Amount</span>
+                    <span style="color: var(--accent-color);">₹${subtotal.toFixed(2)}</span>
+                </div>
+
+                <div class="form-group" style="margin-top: 2rem;">
+                    <label class="form-label" for="deliveryAddress">Delivery Address</label>
+                    <textarea id="deliveryAddress" class="form-control" rows="2" placeholder="Confirm your delivery address...">${currentUser.address || ''}</textarea>
+                </div>
+
+                <button class="btn btn-primary" onclick="checkout()" style="margin-top: 1rem;">Place Order (Checkout)</button>
+            `;
+
+            content.innerHTML = html;
+        }
+
+        async function updateQuantity(itemId, newQty) {
+            if (newQty <= 0) {
+                // Delete item
+                try {
+                    const response = await fetch(`/api/cart-items/${itemId}/`, {
+                        method: 'DELETE'
+                    });
+                    if (response.ok) {
+                        fetchCart();
+                    }
+                } catch (err) {
+                    console.error("Failed to delete cart item", err);
+                }
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/cart-items/${itemId}/`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ quantity: newQty })
+                });
+                if (response.ok) {
+                    fetchCart();
+                }
+            } catch (err) {
+                console.error("Failed to update cart item", err);
+            }
+        }
+
+        async function checkout() {
+            const alertBox = document.getElementById('alertBox');
+            alertBox.innerHTML = '';
+
+            const address = document.getElementById('deliveryAddress').value.trim();
+            if (!address) {
+                alertBox.innerHTML = '<div class="alert alert-danger">Please provide a delivery address.</div>';
+                return;
+            }
+
+            // Find restaurant ID from first item in cart
+            const items = cartData.items || [];
+            if (items.length === 0) return;
+            const restaurantId = items[0].food_detail.restaurant;
+
+            const payload = {
+                customer: currentUser.id,
+                restaurant: restaurantId,
+                delivery_address: address
+            };
+
+            try {
+                const response = await fetch('/api/orders/add/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    const order = await response.json();
+                    alertBox.innerHTML = `
+                        <div class="alert alert-success">
+                            Order #${order.id} placed successfully! Redirecting to orders screen...
+                        </div>
+                    `;
+                    setTimeout(() => {
+                        window.location.href = '/orders/';
+                    }, 1500);
+                } else {
+                    const data = await response.json();
+                    alertBox.innerHTML = `<div class="alert alert-danger">Checkout failed: ${data.error || JSON.stringify(data)}</div>`;
+                }
+            } catch (err) {
+                alertBox.innerHTML = '<div class="alert alert-danger">Server connection failed during checkout.</div>';
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('currentUser');
+            window.location.href = '/login/';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Menu - Antigravity Eats</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .category-header {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            color: var(--accent-color);
+            font-size: 1.4rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="nav-brand"><span>🚀 Antigravity</span> Eats</a>
+        <div class="nav-links" id="navLinks">
+            <!-- Dynamic navbar -->
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Restaurant Header -->
+        <div class="card restaurant-banner" id="restaurantHeader">
+            <h2>Loading Restaurant...</h2>
+        </div>
+
+        <div id="alertBox"></div>
+
+        <!-- Food search wrapper -->
+        <div class="card" style="padding: 1.5rem; margin-bottom: 2rem;">
+            <h3>Search in Menu</h3>
+            <div class="search-wrapper">
+                <input type="text" id="foodQuery" class="form-control" placeholder="Search for food items (e.g. Biryani)...">
+                <button class="btn btn-primary" onclick="searchFoods()">Search</button>
+            </div>
+        </div>
+
+        <!-- Menu Section -->
+        <div id="menuContainer">
+            <!-- Foods grouped by categories loaded dynamically -->
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Antigravity Eats.</p>
+    </footer>
+
+    <script>
+        let currentUser = null;
+        let restaurantId = null;
+        let userCartId = null;
+        let menuItems = [];
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            currentUser = JSON.parse(localStorage.getItem('currentUser'));
+            setupNavbar();
+
+            // Extract restaurant_id from query params
+            const params = new URLSearchParams(window.location.search);
+            restaurantId = params.get('restaurant_id');
+
+            if (!restaurantId) {
+                document.getElementById('menuContainer').innerHTML = '<div class="alert alert-danger">No restaurant selected. Please browse restaurants first.</div>';
+                return;
+            }
+
+            await fetchRestaurantInfo();
+            await fetchUserCart();
+            await fetchFoods();
+
+            document.getElementById('foodQuery').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    searchFoods();
+                }
+            });
+        });
+
+        function setupNavbar() {
+            const links = document.getElementById('navLinks');
+            if (currentUser) {
+                links.innerHTML = `
+                    <span style="color: var(--text-secondary); margin-right: 0.5rem;">Hello, <strong>${currentUser.full_name}</strong></span>
+                    <a href="/restaurants/" class="nav-link">🏪 Restaurants</a>
+                    <a href="/cart/" class="nav-link">🛒 Cart</a>
+                    <a href="/orders/" class="nav-link">📦 My Orders</a>
+                    <button class="nav-btn" onclick="logout()">Logout</button>
+                `;
+            } else {
+                links.innerHTML = `
+                    <a href="/restaurants/" class="nav-link">🏪 Restaurants</a>
+                    <a href="/register/" class="nav-link">Register</a>
+                    <a href="/login/" class="nav-btn">Login</a>
+                `;
+            }
+        }
+
+        async function fetchRestaurantInfo() {
+            const header = document.getElementById('restaurantHeader');
+            try {
+                const response = await fetch(`/api/restaurants/${restaurantId}/`);
+                if (response.ok) {
+                    const r = await response.json();
+                    document.title = `${r.name} Menu - Antigravity Eats`;
+                    header.innerHTML = `
+                        <h1>${r.name}</h1>
+                        <p style="color: var(--text-secondary);">${r.description || 'Premium local dining experience.'}</p>
+                        <div style="font-size: 0.9rem; color: var(--text-secondary); display: flex; gap: 1.5rem; margin-top: 0.5rem;">
+                            <span>📍 ${r.address}</span>
+                            <span>📞 ${r.phone || 'N/A'}</span>
+                        </div>
+                    `;
+                } else {
+                    header.innerHTML = '<h2>Restaurant Not Found</h2>';
+                }
+            } catch (err) {
+                header.innerHTML = '<h2>Server Offline</h2>';
+            }
+        }
+
+        async function fetchUserCart() {
+            if (!currentUser) return;
+
+            try {
+                // Fetch all carts and find the one belonging to customer
+                const response = await fetch('/api/carts/');
+                if (response.ok) {
+                    const carts = await response.json();
+                    const match = carts.find(c => c.customer === currentUser.id);
+                    if (match) {
+                        userCartId = match.id;
+                    } else {
+                        // Create cart
+                        const createResponse = await fetch('/api/carts/', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ customer: currentUser.id })
+                        });
+                        if (createResponse.ok) {
+                            const newCart = await createResponse.json();
+                            userCartId = newCart.id;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("Cart retrieval failed", err);
+            }
+        }
+
+        async function fetchFoods() {
+            const container = document.getElementById('menuContainer');
+            container.innerHTML = '<div style="text-align: center; padding: 3rem; color: var(--text-secondary);">Loading menu items...</div>';
+
+            try {
+                const response = await fetch(`/api/foods/?restaurant=${restaurantId}`);
+                if (response.ok) {
+                    menuItems = await response.json();
+                    renderMenu(menuItems);
+                } else {
+                    container.innerHTML = '<div style="text-align: center; color: var(--danger-color)">Failed to fetch menu items.</div>';
+                }
+            } catch (err) {
+                container.innerHTML = '<div style="text-align: center; color: var(--danger-color)">Server Connection failed.</div>';
+            }
+        }
+
+        async function searchFoods() {
+            const query = document.getElementById('foodQuery').value.trim();
+            if (!query) {
+                renderMenu(menuItems);
+                return;
+            }
+
+            const container = document.getElementById('menuContainer');
+            container.innerHTML = '<div style="text-align: center; padding: 3rem; color: var(--text-secondary);">Searching menu...</div>';
+
+            try {
+                // Fetch all matching search query, then filter locally for this restaurant
+                const response = await fetch(`/api/foods/search/?q=${encodeURIComponent(query)}`);
+                if (response.ok) {
+                    const searchData = await response.json();
+                    const filtered = searchData.filter(f => f.restaurant == restaurantId);
+                    renderMenu(filtered);
+                } else {
+                    container.innerHTML = '<div style="text-align: center; color: var(--danger-color)">Search failed.</div>';
+                }
+            } catch (err) {
+                container.innerHTML = '<div style="text-align: center; color: var(--danger-color)">Connection offline.</div>';
+            }
+        }
+
+        function renderMenu(items) {
+            const container = document.getElementById('menuContainer');
+            if (items.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 3rem; color: var(--text-secondary);">No menu items found matching search query. Try "biryani"!</div>';
+                return;
+            }
+
+            // Group foods by category
+            const categories = {};
+            items.forEach(item => {
+                const cat = item.category || 'Other';
+                if (!categories[cat]) {
+                    categories[cat] = [];
+                }
+                categories[cat].push(item);
+            });
+
+            let html = '';
+            for (const category in categories) {
+                html += `<div class="category-header">${category}</div>`;
+                html += `<div class="grid">`;
+                html += categories[category].map(food => `
+                    <div class="item-card">
+                        <div>
+                            <img src="${food.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500'}" alt="${food.name}" style="width: 100%; height: 140px; object-fit: cover; border-radius: 8px; margin-bottom: 1rem; border: 1px solid var(--border-color);">
+                            <div class="item-header">
+                                <h3>${food.name}</h3>
+                                <span class="item-badge ${food.is_available ? 'success' : 'danger'}">
+                                    ${food.is_available ? 'Available' : 'Unavailable'}
+                                </span>
+                            </div>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                                ${food.description || 'Delectable and freshly prepared.'}
+                            </p>
+                        </div>
+                        <div>
+                            <div class="price-tag">₹${parseFloat(food.price).toFixed(2)}</div>
+                            <button class="btn btn-primary" onclick="addToCart(${food.id})" ${food.is_available ? '' : 'disabled'}>
+                                ${food.is_available ? 'Add to Cart' : 'Out of Stock'}
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+                html += `</div>`;
+            }
+
+            container.innerHTML = html;
+        }
+
+        async function addToCart(foodId) {
+            const alertBox = document.getElementById('alertBox');
+            alertBox.innerHTML = '';
+
+            if (!currentUser) {
+                alertBox.innerHTML = `
+                    <div class="alert alert-danger">
+                        Please <a href="/login/" style="color: #fff; text-decoration: underline;">log in</a> as a customer to add items to your cart.
+                    </div>
+                `;
+                return;
+            }
+
+            if (!userCartId) {
+                alertBox.innerHTML = '<div class="alert alert-danger">Error: Could not locate your shopping cart. Please reload the page.</div>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/carts/${userCartId}/add_item/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ food_id: foodId, quantity: 1 })
+                });
+
+                if (response.ok) {
+                    alertBox.innerHTML = `
+                        <div class="alert alert-success">
+                            Added to cart! <a href="/cart/" style="color: #fff; text-decoration: underline; font-weight: 600;">Go to Cart &rarr;</a>
+                        </div>
+                    `;
+                    // Auto scroll to top to see alert
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                } else {
+                    const data = await response.json();
+                    alertBox.innerHTML = `<div class="alert alert-danger">Error: ${data.error || JSON.stringify(data)}</div>`;
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            } catch (err) {
+                alertBox.innerHTML = '<div class="alert alert-danger">Network error adding to cart.</div>';
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('currentUser');
+            window.location.href = '/login/';
+        }
+    </script>
+</body>
+</html>
