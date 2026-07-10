@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Customer Registration - Antigravity Eats</title>
+    <title>Customer Registration - Enjoy Eats</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <style>
         .form-container {
@@ -14,7 +14,7 @@
 </head>
 <body>
     <nav class="navbar">
-        <a href="/" class="nav-brand"><span>🚀 Antigravity</span> Eats</a>
+        <a href="/" class="nav-brand"><span>🚀 Enjoy</span> Eats</a>
         <div class="nav-links">
             <a href="/restaurants/" class="nav-link">🏪 Restaurants</a>
             <a href="/login/" class="nav-btn">Login</a>
@@ -23,7 +23,7 @@
 
     <div class="container">
         <div class="card form-container">
-            <h2 style="text-align: center; margin-bottom: 1.5rem;">Join Antigravity Eats</h2>
+            <h2 style="text-align: center; margin-bottom: 1.5rem;">Join Enjoy Eats</h2>
             <div id="alertBox"></div>
             <form id="registerForm">
                 <div class="form-group">
@@ -52,10 +52,17 @@
     </div>
 
     <footer>
-        <p>&copy; 2026 Antigravity Eats.</p>
+        <p>&copy; 2026 Enjoy Eats.</p>
     </footer>
 
     <script>
+        // Clear stale Rahul Sharma sessions
+        const checkUser = JSON.parse(localStorage.getItem('currentUser'));
+        if (checkUser && (checkUser.full_name === 'Rahul Sharma' || checkUser.email === 'rahul@gmail.com')) {
+            localStorage.removeItem('currentUser');
+            window.location.reload();
+        }
+
         document.getElementById('registerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const alertBox = document.getElementById('alertBox');

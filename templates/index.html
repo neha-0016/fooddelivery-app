@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Antigravity Eats - Premium Food Delivery</title>
+    <title>Enjoy Eats - Premium Food Delivery</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <style>
         .hero {
@@ -37,7 +37,7 @@
 </head>
 <body>
     <nav class="navbar">
-        <a href="/" class="nav-brand"><span>🚀 Antigravity</span> Eats</a>
+        <a href="/" class="nav-brand"><span>🚀 Enjoy</span> Eats</a>
         <div class="nav-links" id="navLinks">
             <!-- Dynamic Nav Links -->
         </div>
@@ -45,7 +45,7 @@
 
     <div class="container">
         <div class="hero card">
-            <h1>Savor the Finest Flavors Delivered in <span>Antigravity</span></h1>
+            <h1>Savor the Finest Flavors Delivered with <span>Enjoy</span></h1>
             <p>Order delicious dishes from your favorite local restaurants or manage operations dynamically from our premium full-stack dashboard.</p>
             <div class="hero-btns">
                 <a href="/restaurants/" class="btn btn-primary" style="width: auto;">Browse Restaurants</a>
@@ -56,10 +56,17 @@
     </div>
 
     <footer>
-        <p>&copy; 2026 Antigravity Eats. Engineered with Django & Vanilla CSS.</p>
+        <p>&copy; 2026 Enjoy Eats. Engineered with Django & Vanilla CSS.</p>
     </footer>
 
     <script>
+        // Clear stale Rahul Sharma sessions
+        const checkUser = JSON.parse(localStorage.getItem('currentUser'));
+        if (checkUser && (checkUser.full_name === 'Rahul Sharma' || checkUser.email === 'rahul@gmail.com')) {
+            localStorage.removeItem('currentUser');
+            window.location.reload();
+        }
+
         // Check Login State
         document.addEventListener('DOMContentLoaded', () => {
             const user = JSON.parse(localStorage.getItem('currentUser'));

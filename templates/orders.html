@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Orders - Antigravity Eats</title>
+    <title>My Orders - Enjoy Eats</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <style>
         .order-card {
@@ -31,7 +31,7 @@
 </head>
 <body>
     <nav class="navbar">
-        <a href="/" class="nav-brand"><span>🚀 Antigravity</span> Eats</a>
+        <a href="/" class="nav-brand"><span>🚀 Enjoy</span> Eats</a>
         <div class="nav-links" id="navLinks">
             <!-- Dynamic navbar -->
         </div>
@@ -49,10 +49,17 @@
     </div>
 
     <footer>
-        <p>&copy; 2026 Antigravity Eats.</p>
+        <p>&copy; 2026 Enjoy Eats.</p>
     </footer>
 
     <script>
+        // Clear stale Rahul Sharma sessions
+        const checkUser = JSON.parse(localStorage.getItem('currentUser'));
+        if (checkUser && (checkUser.full_name === 'Rahul Sharma' || checkUser.email === 'rahul@gmail.com')) {
+            localStorage.removeItem('currentUser');
+            window.location.reload();
+        }
+
         let currentUser = null;
 
         document.addEventListener('DOMContentLoaded', () => {
